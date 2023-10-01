@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
@@ -33,28 +35,37 @@ class MyApp extends StatelessWidget {
   }
 }
 
-const url = 'http://bit.ly/48O2oBN';
+class Countdown extends ValueNotifier<int> {
+  late StreamSubscription sub;
+  Countdown({required int from}) : super(from) {
+    sub = Stream.periodic(const Duration(seconds: 1), (v) => from - v)
+        .takeWhile((element) => element >= 0)
+        .listen((value) {
+      this.value = value;
+    });
+  }
+
+  @override
+  void dispose() {
+    sub.cancel();
+    super.dispose();
+  }
+}
 
 class MyHomePage extends HookWidget {
   const MyHomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final imageFuture = useMemoized(() => NetworkAssetBundle(Uri.parse(url))
-        .load(url)
-        .then((data) => data.buffer.asUint8List())
-        .then((data) => Image.memory(data)));
-    final snapshot = useFuture(imageFuture);
-
+    final countDown = useMemoized(() => Countdown(from: 20));
+    final notifier = useListenable(countDown);
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         // title: Text(dateTime.data ?? 'Home page'),
         title: const Text('Home page'),
       ),
-      body: Column(
-        children: [snapshot.data].compactMap().toList(),
-      ),
+      body: Text(notifier.value.toString()),
     );
   }
 }
